@@ -6,7 +6,7 @@
 /*   By: sasori <sasori@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/12/25 02:11:15 by aaljaber          #+#    #+#             */
-/*   Updated: 2023/06/07 01:14:47 by sasori           ###   ########.fr       */
+/*   Updated: 2023/06/07 03:27:34 by sasori           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,6 @@ typedef struct	s_client
 	int			fd;
 	int 		id;
 	char		msgStorage[4096];
-	struct	s_client	*next;
 }				t_client;
 
 int							_masterSocket;
@@ -35,7 +34,8 @@ int							_maxSocketfd; // will be used to define the range of the fds
 int							_totalBitSet;
 int							_readbyte;
 char						_msgBuffer[4096];
-t_client					*_head;
+t_client					_clients[1024];
+int							id;
 
 void initServer(int port)
 {
@@ -45,63 +45,31 @@ void initServer(int port)
     _address.sin_addr.s_addr = INADDR_ANY;  
     _address.sin_port = htons(port);
     _addrlen = sizeof(_address);
-	_head = NULL;
-}
-
-t_client* createNode(int value) {
-    t_client* newNode = (t_client *) malloc(sizeof(t_client));
-    newNode->id = 0;
-	newNode->fd = value;
-    newNode->next = NULL;
-    return newNode;
+	for (int i = 0; i < 1024; i++)
+		_clients[i].fd = -1;
+	id = 0;
 }
 
 void sendToAll (int fd)
 {
-	t_client* current = _head;
-	while (current != NULL) {
-		if (current->fd != fd)
-			send(current->fd, _msgBuffer, strlen(_msgBuffer), 0);
-		current = current->next;
+	for (int i = 0; i < 1024; i++){
+		if (_clients[i].fd != fd && _clients[i].fd != -1)
+			send(_clients[i].fd, _msgBuffer, strlen(_msgBuffer), 0);
 	}
 	memset(_msgBuffer, 0, 4096);
 }
 
-void addNodeToList(t_client *newNode) {
-    if (_head == NULL)
-        _head = newNode;
-    else {
-        t_client* current = _head;
-        while (current->next != NULL)
-            current = current->next;
-		int length = sprintf(_msgBuffer, "server: client %d just arrived\n", current->id + 1);
-		_msgBuffer[length] = '\0';
-		sendToAll(-1);
-        current->next = newNode;
-		newNode->id = current->id + 1;
-    }
-}
-
-void deleteNode(int fd) {
-    t_client* current = _head;
-    t_client* previous = NULL;
-
-    while (current != NULL && current->fd != fd) {
-        previous = current;
-        current = current->next;
-    }
-
-    if (current != NULL) {
-        if (previous == NULL)
-            _head = current->next;
-        else
-            previous->next = current->next;
-        
-		int length = sprintf(_msgBuffer, "server: client %d just left\n", current->id);
-		_msgBuffer[length] = '\0';
-        free(current);
-		sendToAll(-1);
-    }
+void createClient(int fd) {
+	for (int i = 0; i < 1024; i++){
+		if (_clients[i].fd == -1)
+		{
+			_clients[i].fd = fd;
+			_clients[i].id = id++;
+			sprintf(_msgBuffer, "server: client %d just arrived\n", _clients[i].id);
+			sendToAll(fd);
+			break;
+		}
+	}
 }
 
 void fatalError()
@@ -110,50 +78,36 @@ void fatalError()
 	exit (1);
 }
 
-int	connectClients()
+void	connectClients()
 {
-	// ? indicate which of the specified fds is ready to reading
 	if (select(_maxSocketfd + 1, &_readfds, NULL, NULL, NULL) < 0)
 		fatalError();
-
-	// ? if the fd is still in the set
 	if (FD_ISSET(_masterSocket, &_readfds))
 	{
 		int newSocket;
 		// ? extract the 1st connection request on the queue of the pending connection for the listening socket
 		// ? create a new connected socket and return its fd
-		if ((newSocket = accept(_masterSocket, (struct sockaddr *)&_address, (socklen_t*)&_addrlen)) < 0)
+		if ((newSocket = accept(_masterSocket, NULL, NULL)) < 0)
 			fatalError();
-
-		// printf("💬 New connection: socket fd is %d\n", newSocket);
-		
 		if (newSocket > _maxSocketfd)
 			_maxSocketfd = newSocket;
-
-		// ? add the connected socket to the client list
-		addNodeToList(createNode(newSocket));
+		createClient(newSocket);
 	}
-	return (1);
 }
 
 void	getClientMsg()
 {
-    for (t_client* current = _head; current != NULL; )
+    for (int i = 0; i < 1024; i++)
 	{
-		if (FD_ISSET(current->fd, &_readfds))  
+		if (_clients[i].fd != -1 && FD_ISSET(_clients[i].fd, &_readfds))  
 		{
-			// ? read the message recieved
-			if ((_readbyte = read(current->fd, _msgBuffer, 1024)) == 0)  
+			if ((_readbyte = read(_clients[i].fd, _msgBuffer, 1024)) == 0)  
 			{
-				// ? if read returned 0, means user is disconnected, so here close the fd and erase client's info
-				
-				// ? to get the info of server fd, the port and the address
-				// printf("🛑 Disconnection: socket fd is %d\n", current->fd);				
-				
-				close(current->fd);
-				deleteNode(current->fd);
-				if (_head == NULL)
-					break ;
+				sprintf(_msgBuffer, "server: client %d just left\n", _clients[i].id);
+				sendToAll(_clients[i].fd);
+				FD_CLR(_clients[i].fd, &_readfds);
+				close(_clients[i].fd);
+				_clients[i].fd = -1;
 			}
 			else
 			{
@@ -162,19 +116,16 @@ void	getClientMsg()
 				_msgBuffer[_readbyte] = '\0';
 				if (strchr(_msgBuffer, '\n'))
 				{
-					strcat(current->msgStorage, _msgBuffer);
+					strcat(_clients[i].msgStorage, _msgBuffer);
 					memset(_msgBuffer, 0, 4096);
-					// printf("📥 Received: %s\n", current->msgStorage);
-					int length = sprintf(_msgBuffer, "client %d: %s", current->id, current->msgStorage);
-					_msgBuffer[length] = '\0';
-					sendToAll(current->fd);
-					memset(current->msgStorage, 0, 4096);
+					sprintf(_msgBuffer, "client %d: %s", _clients[i].id, _clients[i].msgStorage);
+					sendToAll(_clients[i].fd);
+					memset(_clients[i].msgStorage, 0, 4096);
 				}
 				else
-					strcat(current->msgStorage, _msgBuffer);
+					strcat(_clients[i].msgStorage, _msgBuffer);
 			}
 		}
-		current = current->next;
 	}
 }
 
@@ -196,18 +147,12 @@ int main(int argc, char **argv)
 		fatalError();
 	while (1)
 	{
-		// ? clear the fds from the set, used to initialize the fds set
 		FD_ZERO(&_readfds);		
-		// ? adding server socket to the set
 		FD_SET(_masterSocket, &_readfds);
-		// ? adding client's socket fds to the set
-		for (t_client* current = _head; current != NULL; )
-		{
-			FD_SET(current->fd, &_readfds);
-			current = current->next;
-		}
-		if (!connectClients())
-			return (1);
+		for (int i = 0; i < 1024; i++)
+			if (_clients[i].fd != -1)
+				FD_SET(_clients[i].fd, &_readfds);
+		connectClients();
 		getClientMsg();
 	}
     return (0);  
