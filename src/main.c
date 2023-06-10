@@ -6,17 +6,17 @@
 /*   By: sasori <sasori@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/12/25 02:11:15 by aaljaber          #+#    #+#             */
-/*   Updated: 2023/06/07 03:27:34 by sasori           ###   ########.fr       */
+/*   Updated: 2023/06/10 21:52:08 by sasori           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 typedef struct	s_client
 {
@@ -26,7 +26,6 @@ typedef struct	s_client
 }				t_client;
 
 int							_masterSocket;
-int 						_opt;
 struct sockaddr_in			_address;
 int							_addrlen;
 fd_set						_readfds; // fds set
@@ -40,9 +39,8 @@ int							id;
 void initServer(int port)
 {
 	_masterSocket = 0;
-	_opt = 1;
 	_address.sin_family = AF_INET;  
-    _address.sin_addr.s_addr = INADDR_ANY;  
+    _address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);  
     _address.sin_port = htons(port);
     _addrlen = sizeof(_address);
 	for (int i = 0; i < 1024; i++)
@@ -101,7 +99,7 @@ void	getClientMsg()
 	{
 		if (_clients[i].fd != -1 && FD_ISSET(_clients[i].fd, &_readfds))  
 		{
-			if ((_readbyte = read(_clients[i].fd, _msgBuffer, 1024)) == 0)  
+			if ((_readbyte = recv(_clients[i].fd, _msgBuffer, 1, 0)) <= 0)  
 			{
 				sprintf(_msgBuffer, "server: client %d just left\n", _clients[i].id);
 				sendToAll(_clients[i].fd);
@@ -114,7 +112,7 @@ void	getClientMsg()
 				// ? when the client receive partial data it doesn't end with new line
 				// ? the _msgStorage used to save each data and join them till it get completed
 				_msgBuffer[_readbyte] = '\0';
-				if (strchr(_msgBuffer, '\n'))
+				if (_msgBuffer[_readbyte - 1] == '\n')
 				{
 					strcat(_clients[i].msgStorage, _msgBuffer);
 					memset(_msgBuffer, 0, 4096);
@@ -128,7 +126,6 @@ void	getClientMsg()
 		}
 	}
 }
-
 
 int main(int argc, char **argv)  
 {

@@ -1,0 +1,6 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory `/Users/sasori/Documents/mini_serv'
+gcc -Wall -Werror -Wextra -g   -c -o src/main.o src/main.c
+gcc -Wall -Werror -Wextra -g ./src/main.o -o mini_serv
+make: Leaving directory `/Users/sasori/Documents/mini_serv'
+ 
