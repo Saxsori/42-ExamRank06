@@ -42,5 +42,7 @@ Warning our tester is expecting that you send the messages as fast as you can. D
 Evaluation can be a bit longer than usual...
 
 Hint: you can use nc to test your program
+
 Hint: you should use nc to test your program
+
 Hint: To test you can use fcntl(fd, F_SETFL, O_NONBLOCK) but use select and NEVER check EAGAIN (man 2 send)
