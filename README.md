@@ -1,4 +1,4 @@
-## MiniServ 42 Exam Rank 06
+## 42 Exam Rank 06: MiniServ
 Assignment name  : mini_serv
 Expected files   : mini_serv.c
 Allowed functions: write, close, select, socket, accept, listen, send, recv, bind, strstr, malloc, realloc, free, calloc, bzero, atoi, sprintf, strlen, exit, strcpy, strcat, memset
