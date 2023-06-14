@@ -6,11 +6,11 @@
 #    By: sasori <sasori@student.42.fr>              +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/11/08 10:58:57 by oal-tena          #+#    #+#              #
-#    Updated: 2023/06/07 01:12:37 by sasori           ###   ########.fr        #
+#    Updated: 2023/06/14 23:18:16 by sasori           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
-SRC = ./src/main.c
+SRC = ./src/mini_serv.c
 
 OBJ = ${SRC:.c=.o}
 
