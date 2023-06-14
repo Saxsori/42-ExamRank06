@@ -6,7 +6,7 @@
 /*   By: sasori <sasori@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/12/25 02:11:15 by aaljaber          #+#    #+#             */
-/*   Updated: 2023/06/14 23:07:22 by sasori           ###   ########.fr       */
+/*   Updated: 2023/06/14 23:07:56 by sasori           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -79,10 +79,10 @@ void connectClients()
 		{
 			if (_clients[i].fd == -1)
 			{
-				_clients[i].fd = fd;
+				_clients[i].fd = newSocket;
 				_clients[i].id = _id++;
 				sprintf(_msgBuffer, "server: client %d just arrived\n", _clients[i].id);
-				sendToClients(fd);
+				sendToClients(newSocket);
 				break;
 			}
 		}
