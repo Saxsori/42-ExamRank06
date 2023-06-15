@@ -6,7 +6,7 @@
 /*   By: sasori <sasori@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/12/25 02:11:15 by aaljaber          #+#    #+#             */
-/*   Updated: 2023/06/15 05:09:55 by sasori           ###   ########.fr       */
+/*   Updated: 2023/06/15 05:27:09 by sasori           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -151,13 +151,11 @@ int main(int argc, char **argv)
 		printfatalError();
 	if (listen(_masterSocket, 10) != 0)
 		printfatalError();
-	FD_ZERO(&_fds);
 	FD_SET(_masterSocket, &_fds);
 	_maxSocketfd = _masterSocket;
 	while (1)
 	{
-		_readfds = _fds;
-		_writefds = _fds;
+		_readfds = _writefds = _fds;
 		if (connectClients())
 			continue;
 		getClientMsg();
