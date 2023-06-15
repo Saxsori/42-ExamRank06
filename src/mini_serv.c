@@ -6,7 +6,7 @@
 /*   By: sasori <sasori@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/12/25 02:11:15 by aaljaber          #+#    #+#             */
-/*   Updated: 2023/06/15 05:27:09 by sasori           ###   ########.fr       */
+/*   Updated: 2023/06/15 05:36:35 by sasori           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #define MAXCHAR 1000000
+#define MAXCLI 1024
 
 typedef struct s_client
 {
@@ -34,9 +35,9 @@ int _maxSocketfd;
 int _totalBitSet;
 int _readbyte;
 char _msgBuffer[MAXCHAR];
-t_client _clients[1024];
+t_client _clients[MAXCLI];
 int _id;
-char _msg[1000000];
+char _msg[MAXCHAR];
 
 
 void initServer(int port)
@@ -47,14 +48,14 @@ void initServer(int port)
 	_address.sin_port = htons(port);
 	_addrlen = sizeof(_address);
 	_cliLen = sizeof(_cliAdrr);
-	for (int i = 0; i < 1024; i++)
+	for (int i = 0; i < MAXCLI; i++)
 		_clients[i].fd = -1;
 	_id = 0;
 }
 
 void sendToClients(int fd)
 {
-	for (int i = 0; i < 1024; i++)
+	for (int i = 0; i < MAXCLI; i++)
 	{
 		if (_clients[i].fd != fd && _clients[i].fd != -1 && FD_ISSET(_clients[i].fd, &_writefds))
 			send(_clients[i].fd, _msg, strlen(_msg), 0);
@@ -79,7 +80,7 @@ int connectClients()
 			return (1);
 		if (newSocket > _maxSocketfd)
 			_maxSocketfd = newSocket;
-		for (int i = 0; i < 1024; i++)
+		for (int i = 0; i < MAXCLI; i++)
 		{
 			if (_clients[i].fd == -1)
 			{
@@ -97,7 +98,7 @@ int connectClients()
 
 void getClientMsg()
 {
-	for (int i = 0; i < 1024; i++)
+	for (int i = 0; i < MAXCLI; i++)
 	{
 		if (_clients[i].fd != -1 && FD_ISSET(_clients[i].fd, &_readfds))
 		{
@@ -114,9 +115,7 @@ void getClientMsg()
 				_msgBuffer[_readbyte] = '\0';
 				if (strstr(_msgBuffer, "\n"))
 				{
-					unsigned long j = 0;
-					if (_clients[i].msgStorage[0] != '\0')
-						j = strlen(_clients[i].msgStorage);
+					unsigned long j = strlen(_clients[i].msgStorage);
 					for (unsigned long k = 0; k < strlen(_msgBuffer); k++)
 					{
 						_clients[i].msgStorage[j++] = _msgBuffer[k];
@@ -126,7 +125,7 @@ void getClientMsg()
 							sprintf(_msg, "client %d: %s", _clients[i].id, _clients[i].msgStorage);
 							sendToClients(_clients[i].fd);
 							j = 0;
-							memset(_clients[i].msgStorage, 0, 1000000);
+							memset(_clients[i].msgStorage, 0, MAXCHAR);
 						}
 					}
 				}
