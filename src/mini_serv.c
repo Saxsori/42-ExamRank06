@@ -6,7 +6,7 @@
 /*   By: sasori <sasori@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/12/25 02:11:15 by aaljaber          #+#    #+#             */
-/*   Updated: 2023/06/15 04:32:52 by sasori           ###   ########.fr       */
+/*   Updated: 2023/06/15 04:57:51 by sasori           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,7 @@ typedef struct s_client
 int _masterSocket;
 struct sockaddr_in _address, _cliAdrr;
 int _addrlen, _cliLen;
-fd_set _readfds;
+fd_set _readfds, _writefds;
 int _maxSocketfd;
 int _totalBitSet;
 int _readbyte;
@@ -56,7 +56,7 @@ void sendToClients(int fd)
 {
 	for (int i = 0; i < 1024; i++)
 	{
-		if (_clients[i].fd != fd && _clients[i].fd != -1)
+		if (_clients[i].fd != fd && _clients[i].fd != -1 && FD_ISSET(_clients[i].fd, &_writefds))
 			send(_clients[i].fd, _msg, strlen(_msg), 0);
 	}
 	memset(_msg, 0, MAXCHAR);
@@ -70,7 +70,7 @@ void printfatalError()
 
 int connectClients()
 {
-	if (select(_maxSocketfd + 1, &_readfds, NULL, NULL, NULL) < 0)
+	if (select(_maxSocketfd + 1, &_readfds, &_writefds, NULL, NULL) < 0)
 		return (1);
 	if (FD_ISSET(_masterSocket, &_readfds))
 	{
@@ -154,10 +154,17 @@ int main(int argc, char **argv)
 	while (1)
 	{
 		FD_ZERO(&_readfds);
+		FD_ZERO(&_writefds);
 		FD_SET(_masterSocket, &_readfds);
+		FD_SET(_masterSocket, &_writefds);
 		for (int i = 0; i < 1024; i++)
+		{
 			if (_clients[i].fd != -1)
+			{
 				FD_SET(_clients[i].fd, &_readfds);
+				FD_SET(_clients[i].fd, &_writefds);
+			}
+		}
 		if (connectClients())
 			continue;
 		getClientMsg();
