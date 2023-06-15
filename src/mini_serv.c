@@ -6,7 +6,7 @@
 /*   By: sasori <sasori@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/12/25 02:11:15 by aaljaber          #+#    #+#             */
-/*   Updated: 2023/06/15 04:57:51 by sasori           ###   ########.fr       */
+/*   Updated: 2023/06/15 05:09:55 by sasori           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,7 @@ typedef struct s_client
 int _masterSocket;
 struct sockaddr_in _address, _cliAdrr;
 int _addrlen, _cliLen;
-fd_set _readfds, _writefds;
+fd_set _readfds, _writefds, _fds;
 int _maxSocketfd;
 int _totalBitSet;
 int _readbyte;
@@ -85,6 +85,7 @@ int connectClients()
 			{
 				_clients[i].fd = newSocket;
 				_clients[i].id = _id++;
+				FD_SET(newSocket, &_fds);
 				sprintf(_msg, "server: client %d just arrived\n", _clients[i].id);
 				sendToClients(newSocket);
 				break;
@@ -104,7 +105,7 @@ void getClientMsg()
 			{
 				sprintf(_msg, "server: client %d just left\n", _clients[i].id);
 				sendToClients(_clients[i].fd);
-				FD_CLR(_clients[i].fd, &_readfds);
+				FD_CLR(_clients[i].fd, &_fds);
 				close(_clients[i].fd);
 				_clients[i].fd = -1;
 			}
@@ -146,25 +147,17 @@ int main(int argc, char **argv)
 	initServer(atoi(argv[1]));
 	if ((_masterSocket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 		printfatalError();
-	_maxSocketfd = _masterSocket;
 	if (bind(_masterSocket, (const struct sockaddr *)&_address, sizeof(_address)) != 0)
 		printfatalError();
 	if (listen(_masterSocket, 10) != 0)
 		printfatalError();
+	FD_ZERO(&_fds);
+	FD_SET(_masterSocket, &_fds);
+	_maxSocketfd = _masterSocket;
 	while (1)
 	{
-		FD_ZERO(&_readfds);
-		FD_ZERO(&_writefds);
-		FD_SET(_masterSocket, &_readfds);
-		FD_SET(_masterSocket, &_writefds);
-		for (int i = 0; i < 1024; i++)
-		{
-			if (_clients[i].fd != -1)
-			{
-				FD_SET(_clients[i].fd, &_readfds);
-				FD_SET(_clients[i].fd, &_writefds);
-			}
-		}
+		_readfds = _fds;
+		_writefds = _fds;
 		if (connectClients())
 			continue;
 		getClientMsg();
